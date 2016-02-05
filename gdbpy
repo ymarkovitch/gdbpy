@@ -1,0 +1,37 @@
+#! /usr/bin/gdb --python
+#
+# FILE         :  gdbpy
+# COPYRIGHT    :  Yakov Markovitch, 2016
+# DESCRIPTION  :  Run GDB as a Python interpreter in noninteractive mode
+# CREATION DATE:  5 Feb 2016
+
+"""Run GDB as a Python interpreter in noninteractive mode"""
+
+from __future__ import print_function
+import os.path, sys, runpy, argparse
+
+if __name__ != "__main__":
+    import warnings
+    warnings.warn("%s should not be imported as a module, must run as a script" % __name__, ImportWarning)
+
+__all__ = ()
+
+parser = argparse.ArgumentParser(prog=os.path.basename("__file__"), description = __doc__)
+argset = parser.add_mutually_exclusive_group(required=True)
+argset.add_argument('-c', dest='cmd', help="program passed in as string")
+argset.add_argument('-m', dest='module', help="run library module as a script")
+argset.add_argument('file', nargs='?', help="program read from script file")
+del argset
+parser.add_argument('args', nargs=argparse.REMAINDER)
+
+def run_interpreter():
+    n = parser.parse_known_args(sys.argv != [''] and sys.argv or [])
+    if n.cmd is not None:
+        exec(n.cmd, {}, {})
+    elif n.module is not None:
+        runpy.run_module(n.module)
+    else:
+        assert(n.file)
+        runpy.run_path(n.file)
+
+run_interpreter()
