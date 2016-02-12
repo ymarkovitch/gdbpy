@@ -16,19 +16,36 @@ if __name__ != "__main__":
 
 __all__ = ()
 
-parser = argparse.ArgumentParser(prog=os.path.basename("__file__"), description = __doc__)
-argset = parser.add_mutually_exclusive_group(required=True)
-argset.add_argument('-c', dest='cmd', help="program passed in as string")
-argset.add_argument('-m', dest='module', help="run library module as a script")
-argset.add_argument('file', nargs='?', help="program read from script file")
-del argset
-parser.add_argument('args', nargs=argparse.REMAINDER)
+def make_parser():
+    parser = optparse.OptionParser(prog=os.path.basename(globals().get("__file__", "gdbpy")),
+                                   description = __doc__,
+                                   usage="%prog (-m MODULE | -c CMDSTR | FILE) [ARG ...]",
+                                   epilog=
+                                   "  FILE        python script file\n"
+                                   "  ARG ...     arguments passed to a script")
+
+    def store_value(option, opt_str, value, parser):
+        if parser.rargs and parser.rargs[0] != "--":
+            parser.rargs[:0] = ("--",)
+        print("opt_str='%s' rarg=%s" % (opt_str, parser.rargs))
+        setattr(parser.values, option.dest, value)
+
+    def addscriptopt(optchar, dest, help):
+        parser.add_option(optchar, type="string", dest=dest, action="callback", callback=store_value, help=help)
+
+    addscriptopt('-c', dest='cmdstr', help="python script passed in as a string")
+    addscriptopt('-m', dest='module', help="run python library module as a script")
+
+    parser.disable_interspersed_args()
+    parser.format_epilog = lambda _: parser.epilog and "\n%s\n" % parser.epilog
+
+    return parser
 
 def run_interpreter():
-    n = parser.parse_known_args(sys.argv != [''] and sys.argv or [])
-    if n.cmd is not None:
+    opts, args = make_parser().parse_args(sys.argv != [''] and sys.argv or [])
+    if opts.cmdstr is not None:
         exec(n.cmd, {}, {})
-    elif n.module is not None:
+    elif opts.module is not None:
         runpy.run_module(n.module)
     else:
         assert(n.file)
