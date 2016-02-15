@@ -8,26 +8,27 @@
 """Run GDB as a Python interpreter in noninteractive mode"""
 
 from __future__ import print_function
-import os.path, sys, runpy, argparse
+import os.path, sys, runpy
 
 if __name__ != "__main__":
     import warnings
     warnings.warn("%s should not be imported as a module, must run as a script" % __name__, ImportWarning)
 
 __all__ = ()
+__filename = globals().get("__file__", "gdbpy")
 
 def make_parser():
-    parser = optparse.OptionParser(prog=os.path.basename(globals().get("__file__", "gdbpy")),
-                                   description = __doc__,
-                                   usage="%prog (-m MODULE | -c CMDSTR | FILE) [ARG ...]",
-                                   epilog=
-                                   "  FILE        python script file\n"
-                                   "  ARG ...     arguments passed to a script")
+    from optparse import OptionParser
+    parser = OptionParser(prog=os.path.basename(__filename),
+                          description = __doc__,
+                          usage="%prog (-m MODULE | -c CMDSTR | FILE) [ARG ...]",
+                          epilog=
+                          "  FILE        python script file\n"
+                          "  ARG ...     arguments passed to a script")
 
     def store_value(option, opt_str, value, parser):
         if parser.rargs and parser.rargs[0] != "--":
             parser.rargs[:0] = ("--",)
-        print("opt_str='%s' rarg=%s" % (opt_str, parser.rargs))
         setattr(parser.values, option.dest, value)
 
     def addscriptopt(optchar, dest, help):
@@ -42,13 +43,19 @@ def make_parser():
     return parser
 
 def run_interpreter():
-    opts, args = make_parser().parse_args(sys.argv != [''] and sys.argv or [])
+    parser = make_parser()
+    opts, args = parser.parse_args(sys.argv != [''] and sys.argv or [])
+    args[:0] = (__filename,)
+    sys.argv = args
     if opts.cmdstr is not None:
-        exec(n.cmd, {}, {})
+        exec(opts.cmdstr)
     elif opts.module is not None:
-        runpy.run_module(n.module)
+        runpy.run_module(opts.module, run_name="__main__", alter_sys=True)
     else:
-        assert(n.file)
-        runpy.run_path(n.file)
+        if (len(sys.argv) < 2):
+            parser.error("Nothing to run, neither script nor module specified")
+        scriptfile = sys.argv[1]
+        del sys.argv[1]
+        runpy.run_path(scriptfile)
 
 run_interpreter()
