@@ -1,0 +1,11 @@
+{
+    "argv": [
+        "gdbpy",
+
+        "-c", "from ipykernel import kernelapp as app;import os; os.environ['PYTHONSTARTUP'] = os.environ.get('GDBPYSTARTUP', ''); app.launch_new_instance()",
+        "-f", "{connection_file}"
+    ],
+
+    "display_name": "GDB",
+    "language": "python"
+}
